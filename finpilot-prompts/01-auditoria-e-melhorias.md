@@ -7,7 +7,7 @@
 Você vai trabalhar no **FinPilot**, meu PWA de finanças pessoais que já está em produção. O código está na pasta `Control Finance App\finpilot` do meu notebook. A tarefa tem duas partes, nesta ordem:
 
 1. uma **auditoria geral** do app;
-2. **quatro melhorias**: puxar para atualizar, disparo manual lendo a tela do BB, cartão padrão e diagnóstico da automação.
+2. **cinco melhorias**: puxar para atualizar, disparo manual quando a automação falha, crédito como padrão, diagnóstico da automação e triagem de compra negada.
 
 ## Regras que valem para tudo
 
@@ -68,7 +68,8 @@ Leia o projeto inteiro antes de mexer. Rode os testes e o build e use o app de v
   - assinatura anual (Smart TV R$ 50/ano);
   - conta a pagar quitada fora do app;
   - lançamento com data anterior ao saldo informado;
-  - virada de mês e de ano.
+  - virada de mês e de ano;
+  - pop-up de **compra negada**, aviso de fatura e aviso de limite chegando pela automação (ver 2.4): nenhum pode virar gasto.
 - **Dinheiro:** procure soma de valores em ponto flutuante fora de `dinheiro.js` e arredondamentos inconsistentes.
 - **Datas e fuso:** já houve um bug que gravava o dia seguinte depois das 21h. Procure qualquer outro uso de UTC, `toISOString()` ou `new Date('yyyy-mm-dd')` que desloque o dia.
 
@@ -152,73 +153,101 @@ Quero o gesto do Chrome no celular: na tela que está no topo, arrastar para bai
 - Use `overscroll-behavior-y: contain` onde for preciso para não brigar com o elástico nativo do iOS. Respeite `prefers-reduced-motion`.
 - **Teste:** a lógica do gesto (limite, cancelamento, bloqueios) isolada num hook com teste unitário.
 
-### 2.2 Disparo manual lendo a tela do BB
+### 2.2 Disparo manual quando a automação falha
 
-**Problema:** às vezes a automação da notificação não dispara (hoje de manhã três compras não entraram). Quando eu rodo o atalho manualmente pelo ▶, ele não tem notificação de entrada e manda um item vazio, sem valor nem nada.
-
-**O que eu quero:** estou com a tela do app do BB aberta, mostrando a compra (detalhe da transação ou extrato do cartão). Disparo um atalho e o gasto entra no FinPilot com valor, loja, data e cartão.
-
-**Solução esperada:**
-
-1. **Novo atalho, "FinPilot · Ler tela"**, com as ações nesta ordem:
-   - **Tirar Captura de Tela**;
-   - **Extrair Texto da Imagem** (OCR no próprio aparelho, sem servidor);
-   - limpeza com a mesma expressão `[\n\r"\\]` → espaço. Atenção: aqui a quebra de linha pode ser informação útil. Avalie trocar por um separador ` | ` em vez de espaço;
-   - Formatar Data;
-   - Texto com o modelo, com `origem: "tela"`;
-   - Obter Conteúdo de URL (POST).
-
-   Ele será disparado por **Toque Traseiro** (Ajustes → Acessibilidade → Toque → Toque Traseiro) ou pelo Botão de Ação.
-2. **No app, um leitor de texto de tela (OCR)** separado do leitor de notificação, porque o texto vem bagunçado, com várias linhas e vários valores. Ele tem que:
-   - escolher o valor **da transação** e ignorar saldo, limite disponível, limite total, valor da fatura e cashback;
-   - achar a loja, a data e a hora da tela (e não a hora do envio);
-   - achar o final do cartão, as parcelas ("em 3x", "parcela 1/3") e o tipo (compra, Pix enviado ou recebido, débito);
-   - quando houver mais de uma transação na tela (extrato), pegar a **mais recente**, ou mandar todas para "Para completar" como lista para eu escolher. Proponha a melhor das duas;
-   - ter testes com textos de OCR realistas, incluindo ruído (`R$1.234,56`, `R$ 45,90`, `RS 45,90` lido errado, valores negativos e o "limite disponível" na mesma tela).
-
-   Peça-me prints reais para calibrar, mas entregue já funcionando com os formatos comuns.
-3. **Atalho de notificação mais robusto:** quando o "Pegar Valor BB" for rodado à mão (sem notificação na Entrada do Atalho), em vez de mandar vazio ele deve:
-   - cair no fluxo de captura de tela;
-   - ou, se você achar melhor, perguntar o valor ("Pedir Entrada", número) e a descrição.
-   - Monte isso com a ação **Se** do Atalhos: "Se Entrada do Atalho não tem nenhum valor".
-4. **No app, nunca mais criar item vazio.** Payload sem texto aproveitável vira:
-   - um aviso "Recebi um envio sem conteúdo — teste?", que eu descarto com um toque;
-   - nunca um lançamento nem um "Para completar" sem nada.
-   - Guarde sempre o **texto bruto** recebido, visível em "Para completar", para eu entender o que chegou.
-5. **Guia dentro do app:**
-   - acrescente o atalho "Ler tela" ao passo a passo de Configurações → Lançamento automático, no mesmo formato de uma ação por tela, com botão Copiar e o desenho de como a ação fica;
-   - inclua a configuração do Toque Traseiro.
-   - Lembrete do que aprendemos: colar o modelo inteiro com marcadores (`XTITULOX`, `XMSGX`, `XDATAX`) e trocar com ações Substituir **funcionou**. Editar o meio do texto no iPhone **não funcionou**.
-6. **Avalie e me diga** se dá para eu distribuir os atalhos por **link do iCloud com "Perguntas de importação"**. Isso pediria a chave e o endereço na instalação, em vez de eu montar ação por ação. Se der, o guia passa a ter "1. Toque no link 2. Cole a chave". Explique o que eu preciso fazer uma vez para gerar os links (você não consegue gerar daqui).
-
-### 2.3 Cartão de crédito padrão
-
-**Problema:** quando a notificação não informa o cartão, o gasto fica sem cartão e eu preciso escolher toda vez.
+**Como funciona hoje:** chega o pop-up (notificação) do BB e a automação "Pegar Valor BB" dispara sozinha. Às vezes ela não dispara (hoje de manhã três compras não entraram). Quando eu rodo o atalho à mão pelo ▶, ele não tem notificação de entrada e manda um item vazio, sem valor nem nada.
 
 **O que eu quero:**
-- Em **Configurações → Lançamento automático**, um campo **"Cartão padrão para compras automáticas"**.
-- Atalho para o mesmo campo na tela de **Cartões**, como "Definir como padrão", com uma marca visual discreta no cartão escolhido.
-- Na mesma linha, **"Conta padrão para Pix e débito"**.
+- Quando falhar, deixo o pop-up do BB na Central de Notificações, rodo um atalho **à mão** e ele lança aquela compra.
+- **Sem Toque Traseiro e sem Botão de Ação.** Eu rodo pelo app Atalhos ou por um widget.
+- Em paralelo, **corrigir a causa das falhas** (ver 2.5), para o manual ser exceção.
 
-**Ordem para decidir o cartão de um lançamento automático:**
-1. Final do cartão no texto, se casar com um cartão cadastrado.
-2. Se só existir um cartão de crédito ativo, ele.
-3. O **cartão padrão**.
-4. Se nada disso resolver, "Para completar", com o motivo.
+**Limitação do iOS que você precisa respeitar (confirme antes de desenhar):** um atalho **não consegue ler uma notificação que já chegou**. Não existe ação "ler notificações da Central". Ele só recebe o texto da notificação no momento em que ela dispara a automação. Além disso, quando eu abro o app Atalhos para rodar à mão, a tela passa a ser o Atalhos, então uma captura de tela automática pegaria o Atalhos, não o pop-up. Por isso, "rodar à mão e ele lê sozinho o pop-up" não é possível do jeito literal. O desenho abaixo chega o mais perto disso.
 
-**Regras:**
-- Pix enviado e débito usam a conta padrão, com a mesma lógica.
-- Se o cartão padrão for excluído ou arquivado, o app volta para "sem padrão" e me avisa. Nunca grava num cartão inexistente.
-- Os itens que já estão em "Para completar" por falta de cartão ganham o botão **"Usar cartão padrão em todos"**.
-- O lançamento automático mostra de onde veio o cartão ("cartão padrão" ou "pelo final 5720"), para eu desconfiar quando precisar.
-- Campos novos opcionais nas configurações do usuário (por exemplo `config.cartaoPadraoId`, `config.contaPadraoId`).
-- Testes para cada passo da ordem de decisão.
+**Solução esperada: um atalho manual, "FinPilot · Lançar compra", com dois caminhos**
 
-### 2.4 Diagnóstico da automação
+1. **Pelo print do pop-up (lê o que está lá):**
+   - Eu abro a Central de Notificações com o pop-up do BB à vista e tiro um print (botão lateral + volume).
+   - Na miniatura do print, toco em **Compartilhar → FinPilot · Lançar compra**.
+   - O atalho aceita **imagens pela Folha de Compartilhamento**, roda **Extrair Texto da Imagem** (leitura no próprio aparelho, sem servidor) e envia com `origem: "print"`.
+   - Funciona também com um print da tela de detalhe da compra no app do BB.
+   - Na limpeza do texto, troque quebra de linha por ` | ` em vez de espaço: em texto lido de imagem, a linha separa informação.
+2. **Sem imagem (rodado direto pelo app Atalhos ou por widget):**
+   - Pede **Valor** (teclado numérico) e **Onde** (texto curto), com a data e hora de agora.
+   - Envia com `origem: "manual"`. Leva menos de 10 segundos.
+   - Monte com a ação **Se**: "Se Entrada do Atalho tem algum valor" → caminho 1; senão → caminho 2.
+3. **No app, um leitor de texto de print**, separado do leitor de notificação, porque o texto vem bagunçado, com várias linhas e vários valores. Ele tem que:
+   - escolher o valor **da compra** e ignorar saldo, limite disponível, limite total, valor da fatura e cashback;
+   - achar a loja e a **hora que aparece no pop-up** ("há 2 h", "09:41", "ontem"), não a hora do envio;
+   - quando houver vários pop-ups do BB no mesmo print, lançar cada um, sem duplicar o que já entrou pela automação (regra de duplicidade que já existe);
+   - ter testes com textos realistas de leitura de imagem, incluindo ruído (`R$1.234,56`, `RS 45,90` lido errado, vários valores na mesma tela).
+   - Peça-me prints reais para calibrar, mas entregue já funcionando com os formatos comuns.
+4. **O "Pegar Valor BB" rodado à mão** (sem notificação de entrada) não pode mais mandar item vazio: ele deve chamar o "FinPilot · Lançar compra" (ação **Executar Atalho**).
+5. **No app, nunca mais criar item vazio.**
+   - Envio sem texto aproveitável vira um aviso "Recebi um envio sem conteúdo — teste?", descartável com um toque.
+   - Nunca vira lançamento nem "Para completar" vazio.
+   - Guarde sempre o **texto bruto** recebido, visível em "Para completar" e no Diagnóstico.
+6. **Guia dentro do app (Configurações → Lançamento automático):**
+   - acrescente o "FinPilot · Lançar compra" no mesmo formato do passo a passo atual: uma ação por tela, botão Copiar e o desenho de como a ação fica;
+   - inclua como ligar "Mostrar na Folha de Compartilhamento → Imagens" e como pôr o atalho num widget na tela de início;
+   - inclua "como lançar quando a automação falhar": print do pop-up → Compartilhar → FinPilot.
+   - Lembrete do que aprendemos: colar o modelo inteiro com marcadores (`XTITULOX`, `XMSGX`, `XDATAX`) e trocar com ações Substituir **funcionou**. Editar o meio do texto no iPhone **não funcionou**.
+   - Toda mudança em atalho do iPhone tem que estar documentada nesse passo a passo **e** listada na sua entrega final.
+7. **Avalie e me diga** se dá para distribuir os atalhos por **link do iCloud com "Perguntas de importação"**, que pediriam a chave e o endereço na instalação em vez de eu montar ação por ação. Se der, o guia passa a ser "1. Toque no link 2. Cole a chave". Explique o que eu preciso fazer uma vez para gerar os links (você não consegue gerar daqui).
+
+### 2.3 Crédito como padrão nos lançamentos do pop-up
+
+**Minha situação:** tenho **um único cartão de crédito** (Banco do Brasil, Visa, final 5720). Algumas compras que chegaram pelo pop-up entraram como **Pix**, e estavam erradas.
+
+**Regra que eu quero:**
+- Lançamento que vem do pop-up do BB (notificação, print ou manual) é **compra no cartão de crédito** por padrão, nesse cartão, como **a pagar** (entra na fatura, não mexe no saldo da conta).
+- Só é **Pix** se o texto disser Pix de forma explícita ("Pix enviado", "Pix recebido", "Pix realizado"). Só é **débito** se disser débito de forma explícita.
+- **Antes de mexer, investigue:**
+  - Por que as compras viraram Pix? Pegue os textos brutos dessas compras e descubra a causa: regra antiga (já houve a correção "sem meio informado → crédito", ver se está publicada), palavra que confundiu o leitor ou outra coisa.
+  - Corrija a causa com teste usando esses textos.
+- **Lançamentos já gravados errado:** liste em "Revisar" os que vieram do pop-up como Pix sem a palavra Pix no texto bruto, com o botão **"Mudar para crédito"** (um a um ou todos). Nada muda sem eu confirmar.
+
+**Cartão padrão (para quando houver mais de um cartão no futuro e para quem comprar o app):**
+- Campo **"Cartão padrão para compras automáticas"** em Configurações → Lançamento automático. Com um único cartão, ele já vem preenchido com esse cartão.
+- Ordem de decisão:
+  1. final do cartão no texto, se casar com um cartão cadastrado;
+  2. único cartão de crédito ativo;
+  3. cartão padrão;
+  4. "Para completar", com o motivo.
+- Se o cartão padrão for excluído, o app volta para "sem padrão" e avisa. Nunca grava num cartão inexistente.
+- O lançamento mostra de onde veio o cartão ("cartão padrão" ou "pelo final 5720").
+- Campo novo opcional, por exemplo `config.cartaoPadraoId`. Testes para cada passo da ordem e para a regra "crédito por padrão, Pix só explícito".
+
+### 2.4 Compra negada e outros avisos do BB que não são gasto
+
+**Risco:** o filtro do iPhone é só "contém R$". Um pop-up de **compra negada** ("compra não aprovada", "transação recusada", "não autorizada", "saldo/limite insuficiente") tem "R$" e hoje pode virar gasto. O mesmo vale para outros avisos com valor que não são compra.
+
+**Decisão de desenho:** a triagem fica **no app**, não no atalho. O atalho continua mandando tudo que tiver "R$", e eu não preciso refazer nada no iPhone.
+- No app a regra tem teste, aparece no Diagnóstico e pode ser corrigida sem eu mexer no celular.
+- Se você concluir que **algo precisa mudar no atalho**, a mudança tem que entrar no passo a passo do app (2.2, item 6) e na entrega final, com o passo exato.
+
+**O leitor tem que classificar cada aviso, antes de qualquer lançamento, em:**
+
+| Tipo de aviso | Exemplos de texto | O que o app faz |
+|---|---|---|
+| Compra aprovada | "compra aprovada", "compra realizada" | Lança no crédito (2.3) |
+| **Compra negada** | "não aprovada", "negada", "recusada", "não autorizada", "bloqueada", "insuficiente", "tentativa de compra" | **Não lança.** Registra no Diagnóstico como "Ignorado: compra negada" e mostra um aviso discreto: "Compra negada de R$ X em LOJA — não lancei" |
+| Compra cancelada ou estornada | "cancelada", "estorno", "devolução" | Estorno ligado à compra original, se achar; senão vai para "Revisar" |
+| Fatura | "fatura fechou", "fatura disponível", "vence em", "pagamento da fatura recebido" | Não lança gasto. Pode atualizar ou confirmar a fatura, nunca somar como compra |
+| Limite ou saldo | "limite disponível", "saldo" | Ignora |
+| Pix enviado ou recebido, débito | palavras explícitas | Lança como Pix ou débito na conta padrão |
+| Não reconhecido | qualquer outro | "Para completar", com o texto bruto. **Nunca** vira gasto por suposição |
+
+- Em caso de dúvida entre aprovada e negada, **não lança**: manda para "Para completar".
+- Testes obrigatórios: um por linha da tabela. Inclua o caso em que a mesma compra gera "negada" e, minutos depois, "aprovada" (lança uma vez só) e o caso "aprovada" seguida de "cancelada".
+- **Na auditoria (Parte 1)**, inclua um achado específico: o que o leitor atual faz hoje com cada tipo da tabela, com o resultado de cada teste antes da correção.
+- Peça-me prints reais de compra negada e de aviso de fatura do BB, se eu tiver, para calibrar.
+
+### 2.5 Diagnóstico da automação
 
 Para eu descobrir sozinho por que uma compra não entrou, crie em Configurações → Lançamento automático uma área **"Diagnóstico"** com:
-- o último item recebido de cada origem (notificação, tela, Siri, WhatsApp), com data e hora;
-- os últimos 20 envios recebidos com o texto bruto e o que o app fez com cada um (lançado, para completar, descartado como duplicado, vazio);
+- o último item recebido de cada origem (notificação, print, manual, Siri, WhatsApp), com data e hora;
+- os últimos 20 envios recebidos com o texto bruto e o que o app fez com cada um (lançado, para completar, duplicado, vazio, ignorado como compra negada, fatura ou limite);
 - uma lista de verificação do iPhone, com links das telas de Ajustes:
   - **dados celulares do Atalhos** (foi a causa de uma falha);
   - **Foco** silenciando o BB;
@@ -236,7 +265,7 @@ Para eu descobrir sozinho por que uma compra não entrou, crie em Configuraçõe
 3. **O que mudou para mim no app**, tela por tela, em linguagem simples.
 4. **Campos novos no banco** (todos opcionais) e a confirmação de que nenhum dado foi apagado.
 5. **Testes:** quantos passam e quais foram adicionados.
-6. **O que eu preciso fazer no iPhone**, passo a passo, para os atalhos novos.
+6. **O que eu preciso fazer no iPhone**, passo a passo: atalho novo e qualquer mudança no "Pegar Valor BB". Se nada mudar no atalho atual, diga isso explicitamente.
 7. **Comandos para publicar:**
    ```
    npm install
