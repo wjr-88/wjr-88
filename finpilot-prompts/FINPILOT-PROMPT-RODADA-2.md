@@ -173,6 +173,26 @@
 - `idEnvio` repetido ignorado;
 - reenvio de pendentes fora de ordem.
 
+**5. Investigar o lado do código (não só o iPhone):**
+- Por que o app perde a nuvem no 4G se o resto da internet funciona? Verifique a conexão do Firestore em rede móvel:
+  - o canal em tempo real (WebChannel) costuma falhar em algumas operadoras;
+  - avalie `experimentalAutoDetectLongPolling` (ou `experimentalForceLongPolling`) na inicialização do Firestore;
+  - confira os tempos limite, a persistência offline e a reconexão ao voltar do segundo plano.
+- Reproduza com rede lenta ou instável (limitação de rede do navegador) e mostre o antes e o depois.
+- Se a causa provável for configuração do iPhone, inclua no Diagnóstico um botão **"Testar conexão agora"**. Ele faz uma gravação e uma leitura de teste e mostra o resultado e o tempo, para eu rodar na rua no 4G.
+
+### A7. Cartão padrão já preenchido nos formulários
+
+**Problema:** ao lançar ou editar uma despesa e escolher **Cartão de crédito**, eu ainda preciso escolher o cartão, mesmo tendo um só (Visa final 5720).
+
+**Regra:**
+- Ao escolher a forma de pagamento **Cartão de crédito**, em lançamento novo **ou** edição, o campo do cartão já vem preenchido com o **cartão padrão** (`config.cartaoPadraoId`). Sem padrão definido e com um único cartão ativo, vem com esse cartão.
+- **Com um único cartão**, o campo aparece compacto, como "Visa final 5720 · padrão", com um "trocar" discreto. Não é um seletor que obriga a escolher.
+- **Na edição de um lançamento que já tem cartão**, mantém o cartão dele. O padrão só preenche quando o campo está vazio ou quando eu mudo a forma de pagamento para crédito.
+- **Quando eu mudo o cartão padrão** (Configurações ou Cartões), todo formulário novo passa a vir com o novo padrão. Os lançamentos antigos não mudam.
+- **Mesma regra em todos os lugares** onde se escolhe cartão: botão +, edição em Lançamentos, Assinaturas no cartão, "Completar" de um item da caixa de entrada e o "Mudar para crédito" do Revisar.
+- **Teste:** uma função só, `cartaoInicial(forma, lancamento, config, cartoes)`, cobrindo novo, edição com cartão, edição sem cartão, um cartão, vários cartões com e sem padrão, e padrão excluído.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
