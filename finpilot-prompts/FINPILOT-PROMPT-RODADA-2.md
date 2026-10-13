@@ -132,6 +132,47 @@
 - **Telas que já têm opção de ordenar** (como o detalhe da categoria): continuam com a escolha, mas começam em "mais recente".
 - **Teste:** uma função única de ordenação usada por todas as listas, com os casos de mesmo dia, com e sem hora.
 
+### A6. Envios que se perdem no 4G e hora no Diagnóstico
+
+**O que aconteceu (relato real):**
+- Saí para fazer compras no **4G**.
+- O app mostrou o aviso de que estava **sem acesso à nuvem** e salvando só no aparelho.
+- As compras feitas pela **Siri** e pelo **pop-up do BB** não apareceram no app. A da Siri entrou **depois de um tempo**. A do pop-up não entrou.
+- No Diagnóstico, o envio da Siri mostra **só a data, sem a hora**, então não consigo saber se o atraso foi no iPhone, no envio ou no app.
+
+**1. Três horários em cada envio, no Diagnóstico e no texto bruto de "Para completar":**
+- **Feito no iPhone:** o `recebidoEm` que o atalho manda.
+  - Confira os modelos de **todos** os atalhos (Siri, notificação, "Lançar compra", Android). Todos têm que mandar `yyyy-MM-dd HH:mm`.
+  - Investigue por que o da Siri chega sem hora: modelo ou guia da Siri com outro formato, ou o leitor descartando a hora. Corrija a causa e o guia da Siri dentro do app.
+- **Chegou na nuvem:** a hora em que o Firestore gravou o item. Use o `createTime` do documento (vem de graça na API) ou um campo de hora do servidor validado pela regra. Esse é o horário confiável.
+- **Lançado pelo app:** a hora em que o app processou o item.
+- Mostre a diferença entre eles ("chegou 1 h 12 min depois de feito", "lançado 40 min depois de chegar"), para eu enxergar onde está o atraso.
+- **Data do lançamento:** se o `recebidoEm` vier sem hora ou inválido, use a hora de chegada na nuvem, não a do processamento.
+
+**2. Diagnóstico de rede quando o app está sem nuvem:**
+- Quando o app mostrar "sem acesso à nuvem", diga **o motivo provável** e o que conferir no iPhone:
+  - Ajustes → Celular: **Safari** e **Atalhos** ligados (o app instalado na tela de início usa a permissão do Safari);
+  - **Modo Dados Reduzidos** desligado;
+  - **Retransmissão Privada do iCloud**, VPN ou DNS bloqueador interferindo em `firestore.googleapis.com`;
+  - sinal fraco.
+- Ao voltar a conexão, o app sincroniza sozinho o que ficou só no aparelho e avisa ("3 alterações enviadas para a nuvem"). Confirme isso com teste.
+
+**3. Atalho que não perde a compra quando falha o envio:**
+- O Atalhos não tem "tentar de novo". Monte isto em **todos** os atalhos de envio, e documente no passo a passo do app:
+  - Depois de **Obter Conteúdo de URL**, um **Se**: se a resposta não contém `"name"` (o envio falhou), então:
+    - **Adicionar ao Arquivo de Texto**: grava o envio numa linha de `FinPilot/pendentes.txt`, no iCloud Drive ou em "No Meu iPhone";
+    - **Mostrar Notificação**: "Não consegui enviar ao FinPilot — guardei para reenviar".
+  - Atalho novo **"FinPilot · Reenviar pendentes"**: lê o arquivo, envia linha por linha, apaga as que deram certo e avisa quantas foram.
+  - Automação **"Ao conectar ao Wi-Fi"** (ou em horários fixos) que roda o "Reenviar pendentes" sozinha.
+- **Sem duplicar:** cada envio leva um `idEnvio` gerado no iPhone (data e hora com segundos mais um número aleatório). O app ignora um `idEnvio` repetido. Teste isso.
+- Avise que essa mudança **exige mexer nos atalhos atuais** e diga exatamente quais ações acrescentar, no mesmo formato de uma ação por tela.
+
+**4. Testes:**
+- horários e diferenças no Diagnóstico;
+- envio sem hora usando a hora da nuvem;
+- `idEnvio` repetido ignorado;
+- reenvio de pendentes fora de ordem.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
