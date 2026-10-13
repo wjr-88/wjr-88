@@ -119,6 +119,19 @@
   - se der para gerar um arquivo de macro para importar, ofereça o download.
 - A caixa de entrada e as regras do Firestore passam a aceitar `origem: "android"`. Me diga se as regras mudaram.
 
+### A5. Despesas da mais recente para a mais antiga
+- **Onde:** em **toda** lista de despesas e lançamentos, a ordem padrão é a **data mais recente primeiro**:
+  - Lançamentos e seus grupos por mês;
+  - painel de Despesas e de Receitas;
+  - detalhe da fatia ou categoria;
+  - compras dentro da fatura em Cartões;
+  - Últimos lançamentos no Início;
+  - Para completar e Revisar;
+  - a lista do novo seletor de período (A3).
+- **Desempate:** no mesmo dia, pela **hora** (lançamentos automáticos têm hora do aviso) e, sem hora, pela ordem em que foram criados (o mais novo primeiro).
+- **Telas que já têm opção de ordenar** (como o detalhe da categoria): continuam com a escolha, mas começam em "mais recente".
+- **Teste:** uma função única de ordenação usada por todas as listas, com os casos de mesmo dia, com e sem hora.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
