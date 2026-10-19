@@ -324,6 +324,49 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
 - Botão **"Ajustar saldo para o valor do banco"**, que grava o novo saldo informado com a data e hora de agora, como já existe. Não apaga nem altera lançamentos.
 - **Testes:** a conta do saldo bate com a soma dos movimentos filtrados; o destaque do valor igual à diferença; lançamentos antes da data do saldo não entram.
 
+### A14. Assistente de automação para outros usuários (iPhone, qualquer banco, e Carteira)
+**Contexto:** já passei o FinPilot para conhecidos. Muitos pagam pelo celular (Carteira/Apple Pay) e usam outros bancos (Nubank, Itaú, Inter, C6, Caixa, Santander, Bradesco…). Eu montei meus atalhos à mão, ação por ação. Ninguém mais vai conseguir fazer isso, e o suporte vai cair em mim.
+
+**1. Um atalho só, genérico, distribuído por link do iCloud:**
+- **"FinPilot · Notificação"** serve para **qualquer banco e para a Carteira**. Ele envia **título, subtítulo e corpo** da notificação, mais a data e hora, sem nenhuma lógica de banco. Quem entende o texto é o app.
+- **Base:** use como referência o meu atalho que funciona ("Notificação da Carteira", que monta "Compra no valor de [Corpo] realizada em [Subtítulo]") e o do BB. A versão genérica manda os campos separados (`titulo`, `subtitulo`, `texto`) e o app combina.
+- **Configuração por "Perguntas de Importação"**, para a pessoa não editar nada dentro do atalho:
+  - **um único "Código de conexão"** para colar (junte endereço e chave num código só, por exemplo base64 de `{uid, chave}`, que o atalho decodifica com "Decodificar Base64" + "Obter Valor do Dicionário");
+  - se isso não funcionar no Atalhos, use duas perguntas (endereço e chave) e diga isso.
+- **Siri e "Lançar compra" (print/manual):** mesmo esquema, cada um com link próprio.
+- **Os links eu gero** no meu iPhone. Escreva `LINKS_ATALHOS.md` com o passo a passo exato:
+  1. montar o atalho genérico (uma ação por tela);
+  2. configurar as Perguntas de Importação;
+  3. Compartilhar → Copiar Link do iCloud;
+  4. colar os links no Admin, num campo **"Links dos atalhos"** que o app lê. Assim posso trocar um link sem publicar o app.
+- Enquanto os links não estiverem cadastrados no Admin, o assistente mostra o passo a passo manual que já existe.
+
+**2. Assistente "Ligar lançamento automático"** (Configurações → Lançamento automático, e oferecido no fim do onboarding para quem usa iPhone):
+1. **"Como você costuma pagar?"** Marcar mais de uma: **pelo celular (Carteira/Apple Pay)**, **cartão físico ou internet**, **Pix**.
+2. **"Qual é o seu banco?"** Lista com logos ou nomes: Banco do Brasil, Nubank, Itaú, Inter, C6, Caixa, Santander, Bradesco, Mercado Pago, PicPay e "Outro". Pode marcar mais de um.
+3. **Instalar o atalho:** um botão **"Copiar meu código e instalar"** copia o Código de conexão e abre o link do iCloud. A pessoa toca em "Adicionar Atalho" e cola o código quando o iPhone pedir.
+4. **Criar as automações:** uma por app escolhido (o app do banco e/ou a **Carteira**). Uma tela por automação, com o desenho de como fica:
+   - Atalhos → Automação → + → Notificação → App: **[banco ou Carteira]**;
+   - filtro "contém R$";
+   - Executar Imediatamente, sem confirmar;
+   - ação: **Executar Atalho → FinPilot · Notificação**.
+   - Avise que a automação **não pode ir por link**: é a única parte feita à mão, e cabe numa tela.
+5. **Ativar no banco:** dica por banco para ligar as notificações de compra e Pix no app dele. Se não souber o caminho exato de um banco, escreva a orientação genérica, sem inventar menus.
+6. **Testar:** botão "Fazer um teste" com o "Enviar teste" que já existe e uma lista de verificação (dados celulares do Atalhos e do Safari, Foco, permissão "Sempre permitir").
+7. **Não deu certo?** Botão **"Falar com o suporte"** que abre o **meu WhatsApp** com uma mensagem já escrita, com o resumo técnico do Diagnóstico (banco escolhido, último envio, erro), **sem chave nem dados financeiros**. O número do suporte fica no Admin.
+
+**3. O app aprende o texto de cada banco:**
+- O leitor já reconhece BB e Carteira. Para os outros bancos, comece pelos formatos comuns de notificação de compra e Pix ("Compra aprovada", "Você fez uma compra", "Pix enviado/recebido"), sem inventar textos de bancos específicos.
+- Aviso não reconhecido vai para "Para completar", com o texto bruto, como hoje.
+- Botão **"Enviar este exemplo para melhorar o FinPilot"** em "Para completar". Com consentimento explícito, manda **só o texto do aviso**, com os números de cartão mascarados, para uma coleção `exemplosAvisos` que só o dono lê. Com esses exemplos eu peço depois o ajuste do leitor para cada banco.
+- No Admin: lista desses exemplos por banco, para eu ver o que falta calibrar.
+
+**4. Testes:**
+- Código de conexão (gerar e decodificar);
+- leitura do envio genérico (título + subtítulo + corpo) para BB, Carteira e um formato genérico de outro banco;
+- mensagem de suporte sem chave e sem valores;
+- exemplos enviados com o cartão mascarado.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
@@ -423,7 +466,7 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
   - aceite dos Termos e da Privacidade (rascunhos marcados "revisar com advogado"), com a versão e a data gravadas;
   - "Excluir minha conta", que apaga os dados de fato, depois de confirmar duas vezes e oferecer "Baixar meus dados" antes.
 - **Caixa de entrada da automação:** já é por usuário, com chave própria. Confirme isso com teste nas regras.
-- **Atalhos por link do iCloud:** um guia para eu gerar os links uma vez ("Perguntas de Importação" pedindo chave e endereço). No app, a pessoa só toca no link e cola a chave. A automação do BB continua sendo criada à mão, com uma ação "Executar Atalho".
+- **Atalhos por link do iCloud:** já feito no A14. Aqui, só garanta que funciona com a licença de cada usuário.
 
 ### B7. Testes desta etapa
 - **Vitest:** acesso por plano, transições de status, teste grátis, vencimento, pedido de pagamento manual e cupom.
