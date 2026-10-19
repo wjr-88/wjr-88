@@ -219,36 +219,54 @@
   - 0 e 49 são recusados;
   - editar uma compra de 1x para 3x muda as faturas dos 3 meses e a soma continua igual ao valor da compra.
 
-### A9. Compras com Apple Pay (Carteira) sempre caem em "Para completar"
+### A9. Avisos da Carteira (Apple Pay) sempre caem em "Para completar"
 
-**Sintoma:** compras pagas por aproximação com o iPhone (Apple Pay, Carteira) chegam, mas **sempre** vão para "Para completar". As do cartão físico entram direto.
+**Sintoma:** compras pagas com Apple Pay chegam, mas **sempre** vão para "Para completar". As que vêm pelo pop-up do app do BB entram direto.
 
-**Hipótese principal (confirme pelo texto bruto no Diagnóstico):**
-- No Apple Pay, o cartão tem um **número próprio do aparelho**. Os 4 últimos dígitos são diferentes dos do cartão físico (5720). Eles aparecem na Carteira → cartão → ⓘ → "Número da Conta do Dispositivo".
-- Se o aviso traz "final XXXX" com esse número, o app não encontra o cartão. Pior: pode tratar "final que não bate com nenhum cartão" como conflito e mandar para "Para completar", **antes** de chegar ao passo "único cartão ou cartão padrão".
+**Causa, pelos prints reais:** são **dois avisos diferentes**, de dois apps diferentes.
+
+**Aviso 1 · app Carteira (Apple Pay):**
+```
+App: Carteira
+Título: Banco do Brasil
+Corpo:  Pão de Açúcar. Brasília, DF
+        R$ 27,19
+```
+- O título é o **nome do cartão/banco** na Carteira, não do app.
+- O corpo é **"Loja. Cidade, UF"** e o valor numa linha à parte.
+- **Não tem** "compra", "aprovada", "final" nem "cartão". Por isso a triagem trata como "não reconhecido" e manda para "Para completar". A regra "na dúvida, não lança" está funcionando; falta reconhecer o formato.
+- Depois da limpeza do atalho (quebra de linha → espaço), o texto chega como `Pão de Açúcar. Brasília, DF R$ 27,19`.
+
+**Aviso 2 · app do BB (este já funciona):**
+```
+Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19/10, com cartão final 5720. Caso não reconheça, clique em Bloquear Cartão. Conheça os benefícios do seu...
+```
 
 **O que fazer:**
-1. **Ver o motivo de verdade:** leia os itens que estão em "Para completar" e no Diagnóstico, com origem e texto bruto. Diga qual é o motivo (cartão, valor, loja ou formato do texto). Corrija a causa real, mesmo que não seja a hipótese.
-2. **Cartão com mais de um final:**
-   - Cada cartão aceita uma lista de finais (`finais: ['5720', 'XXXX']`), editável em Cartões → Editar cartão, com o texto de ajuda "o Apple Pay usa outro final — veja na Carteira".
-   - Quando um item que estava em "Para completar" por final desconhecido for completado com um cartão, o app pergunta: "Lembrar que o final XXXX é deste cartão?"
-3. **Ordem de decisão do cartão, corrigida:**
-   1. final que casa com algum cartão;
-   2. **final desconhecido com um único cartão de crédito ativo:** usa esse cartão e marca "cartão por ser o único (final XXXX novo)";
-   3. cartão padrão;
-   4. só então "Para completar".
-   - Final desconhecido nunca pode bloquear quando há um cartão só ou um cartão padrão.
-4. **Outros formatos:**
-   - Se o aviso vier da **Carteira** ou com texto de Apple Pay ("Apple Pay", "carteira digital", "aproximação"), o leitor reconhece como compra no crédito.
-   - Se existir um atalho ou automação antiga de Apple Pay (origem `applepay`), ela segue o mesmo caminho e entra direto.
-   - **Cuidado com duplicidade:** se a mesma compra chegar pela Carteira e pelo pop-up do BB, entra uma vez só (regra de duplicidade que já existe).
-5. **Itens já parados:** em "Para completar", botão **"Usar o cartão padrão em todos"** para os itens parados só por causa do cartão.
-6. **Testes:**
-   - final do aparelho desconhecido com um cartão (entra direto);
-   - final desconhecido com dois cartões e padrão definido (vai no padrão);
-   - final conhecido na lista `finais`;
-   - texto com "Apple Pay";
-   - a mesma compra pela Carteira e pelo BB (lança uma vez).
+1. **Confirme no Diagnóstico** a origem e o texto bruto dos itens parados. Descubra **qual automação** está mandando os avisos da Carteira: a do BB com outro app no filtro, uma automação separada, ou o atalho antigo do Apple Pay (origem `applepay`). Documente isso na entrega.
+2. **Novo formato reconhecido, "aviso da Carteira":**
+   - Quando o **título** for o nome de um cartão ou banco cadastrado ("Banco do Brasil", ou o nome/apelido do cartão) e o corpo tiver `Loja. Cidade, UF` + `R$ valor`, é **compra aprovada no crédito**.
+   - **Cartão:** o que casa com o título (banco ou nome). Senão, o único cartão ativo. Senão, o cartão padrão.
+   - **Descrição:** só a loja ("Pão de Açúcar"). Cidade e UF vão para um campo opcional `local`, não para a descrição.
+   - Também vale para um título "Apple Pay" ou com o nome de outro banco cadastrado.
+   - Avisos da Carteira que **não** são compra (Apple Cash, passes, cartões de transporte, "transação recusada") **não lançam**. Recusada segue a regra de compra negada.
+3. **Aviso do BB, melhorias com o texto real:**
+   - **Usar a data e a hora do texto** ("às 14:10 do dia 19/10") como data e hora da compra. Isso ajuda no A6: a hora passa a vir do próprio banco. O ano é o atual, ou o anterior se a data ficaria no futuro.
+   - **Limpar prefixos de intermediador** na loja: `PG *` (PagSeguro), `MP *` (Mercado Pago), `PAG*`, `IFD*`, `EC *`, `SUMUP *`, `PAYPAL *`. "PG *MAXLOG IMPORT" vira "MAXLOG IMPORT". O texto bruto continua guardado.
+   - Ignorar o rodapé ("Caso não reconheça…", "Conheça os benefícios…").
+4. **Final do cartão diferente (Apple Pay):** no Apple Pay o cartão tem um número próprio do aparelho, com outro final. Para não travar quando isso aparecer:
+   - cada cartão aceita uma lista de finais (`finais: ['5720', ...]`), editável em Cartões;
+   - final desconhecido **nunca** bloqueia quando há um único cartão ou um cartão padrão: entra nele, com a nota "final novo".
+5. **Sem duplicar:** com Apple Pay podem chegar **os dois avisos da mesma compra**, o da Carteira e o do BB. Mesmo valor, mesmo dia e horário próximo é uma compra só. Fica a versão mais completa (a do BB, com hora e final), e a outra é registrada no Diagnóstico como "duplicada".
+6. **Itens já parados:** em "Para completar", botão **"Lançar todos os avisos da Carteira"**, que reprocessa com o leitor novo.
+7. **Testes, com os textos reais acima como base:**
+   - aviso da Carteira lança R$ 27,19 em "Pão de Açúcar", crédito, cartão BB, local "Brasília, DF";
+   - aviso do BB lança R$ 385,58 em "MAXLOG IMPORT", 19/10 às 14:10, cartão final 5720;
+   - Carteira + BB da mesma compra lançam uma vez só;
+   - título da Carteira que não casa com nenhum cartão, com um único cartão, entra nele;
+   - aviso de transporte ou Apple Cash não lança;
+   - prefixos `PG *` e `MP *` limpos;
+   - data "19/10" em janeiro vira o ano anterior.
 
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
