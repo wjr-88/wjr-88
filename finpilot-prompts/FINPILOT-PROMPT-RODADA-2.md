@@ -273,6 +273,35 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
    - prefixos `PG *` e `MP *` limpos;
    - data "19/10" em janeiro vira o ano anterior.
 
+### A10. Gastos "para completar" como mensagem na Visão geral
+- **No topo do Início**, quando houver itens em "Para completar", mostrar uma mensagem em destaque, no visual do app (vidro fosco, champanhe discreto, nada de vermelho alarmante):
+  > **3 gastos esperando você** · R$ 412,90 · "Pão de Açúcar", "Uber" e mais 1
+- Tocar na mensagem abre a lista de "Para completar".
+- Para cada item, ações rápidas sem sair do Início: **Completar** (abre o formulário já preenchido, com o cartão padrão do A7), **Lançar como está** (quando já tem valor) e **Descartar**.
+- A mensagem some sozinha quando não houver mais nada. Também some se eu tocar em "lembrar depois", e volta no dia seguinte ou quando chegar um item novo.
+- Contador (bolinha) no item Lançamentos do menu e da barra de abas.
+- Ao chegar um item novo para completar com o app aberto, aviso discreto no topo ("Novo gasto para completar: R$ 27,19").
+- **Teste:** contagem e soma batem com a lista; a mensagem some com zero itens.
+
+### A11. Aviso para mim quando entra um usuário novo
+- **Só para o dono/root**, sem custo, usando o que já existe: a lista de perfis (`profiles`) que só o root lê.
+- **Ao abrir o app**, se entraram usuários desde a minha última visita, abrir um pop-up:
+  > **2 pessoas novas no FinPilot** · fulano@gmail.com (hoje, 14:32) · beltrana@gmail.com (ontem)
+  - Botões **"Ver no Admin"** e **"Ok"**.
+  - Guarde a data da minha última visita (por exemplo `config.admin.ultimaVisitaUsuarios`) para não repetir o aviso.
+- **Com o app aberto**, um ouvinte em tempo real na lista de perfis mostra o aviso na hora em que alguém entra.
+- **Garanta** que o perfil de quem entra é gravado com a data de criação. Se hoje não for, passe a gravar, sem mexer nos perfis antigos.
+- **Aviso com o app fechado** (notificação no celular) precisaria de Cloud Functions, que é plano pago. **Não implemente**: só explique na entrega como seria no futuro.
+- **Testes:** usuário novo depois da última visita aparece; antigo não; usuário comum nunca vê esse aviso.
+
+### A12. `idEnvio` repetido nos atalhos
+- No modelo do atalho, o `idEnvio` está usando o marcador `XDATAX`, ou seja, a mesma data e hora com minutos do `recebidoEm`.
+- **Risco:** duas compras no mesmo minuto teriam o mesmo `idEnvio`, e a segunda seria ignorada como repetida.
+- **Corrigir:**
+  - no app, a regra de repetido passa a considerar `idEnvio` **e** valor **e** texto: o mesmo `idEnvio` com outro valor ou loja **não** é repetido;
+  - no guia do atalho, trocar por um marcador próprio (`XIDX`) preenchido com a data com segundos mais um número aleatório.
+- Documente a mudança do atalho no passo a passo do app, uma ação por tela. O atalho atual continua funcionando enquanto eu não mexer.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
