@@ -219,6 +219,37 @@
   - 0 e 49 são recusados;
   - editar uma compra de 1x para 3x muda as faturas dos 3 meses e a soma continua igual ao valor da compra.
 
+### A9. Compras com Apple Pay (Carteira) sempre caem em "Para completar"
+
+**Sintoma:** compras pagas por aproximação com o iPhone (Apple Pay, Carteira) chegam, mas **sempre** vão para "Para completar". As do cartão físico entram direto.
+
+**Hipótese principal (confirme pelo texto bruto no Diagnóstico):**
+- No Apple Pay, o cartão tem um **número próprio do aparelho**. Os 4 últimos dígitos são diferentes dos do cartão físico (5720). Eles aparecem na Carteira → cartão → ⓘ → "Número da Conta do Dispositivo".
+- Se o aviso traz "final XXXX" com esse número, o app não encontra o cartão. Pior: pode tratar "final que não bate com nenhum cartão" como conflito e mandar para "Para completar", **antes** de chegar ao passo "único cartão ou cartão padrão".
+
+**O que fazer:**
+1. **Ver o motivo de verdade:** leia os itens que estão em "Para completar" e no Diagnóstico, com origem e texto bruto. Diga qual é o motivo (cartão, valor, loja ou formato do texto). Corrija a causa real, mesmo que não seja a hipótese.
+2. **Cartão com mais de um final:**
+   - Cada cartão aceita uma lista de finais (`finais: ['5720', 'XXXX']`), editável em Cartões → Editar cartão, com o texto de ajuda "o Apple Pay usa outro final — veja na Carteira".
+   - Quando um item que estava em "Para completar" por final desconhecido for completado com um cartão, o app pergunta: "Lembrar que o final XXXX é deste cartão?"
+3. **Ordem de decisão do cartão, corrigida:**
+   1. final que casa com algum cartão;
+   2. **final desconhecido com um único cartão de crédito ativo:** usa esse cartão e marca "cartão por ser o único (final XXXX novo)";
+   3. cartão padrão;
+   4. só então "Para completar".
+   - Final desconhecido nunca pode bloquear quando há um cartão só ou um cartão padrão.
+4. **Outros formatos:**
+   - Se o aviso vier da **Carteira** ou com texto de Apple Pay ("Apple Pay", "carteira digital", "aproximação"), o leitor reconhece como compra no crédito.
+   - Se existir um atalho ou automação antiga de Apple Pay (origem `applepay`), ela segue o mesmo caminho e entra direto.
+   - **Cuidado com duplicidade:** se a mesma compra chegar pela Carteira e pelo pop-up do BB, entra uma vez só (regra de duplicidade que já existe).
+5. **Itens já parados:** em "Para completar", botão **"Usar o cartão padrão em todos"** para os itens parados só por causa do cartão.
+6. **Testes:**
+   - final do aparelho desconhecido com um cartão (entra direto);
+   - final desconhecido com dois cartões e padrão definido (vai no padrão);
+   - final conhecido na lista `finais`;
+   - texto com "Apple Pay";
+   - a mesma compra pela Carteira e pelo BB (lança uma vez).
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
