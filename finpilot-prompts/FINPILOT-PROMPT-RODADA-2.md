@@ -193,6 +193,32 @@
 - **Mesma regra em todos os lugares** onde se escolhe cartão: botão +, edição em Lançamentos, Assinaturas no cartão, "Completar" de um item da caixa de entrada e o "Mudar para crédito" do Revisar.
 - **Teste:** uma função só, `cartaoInicial(forma, lancamento, config, cartoes)`, cobrindo novo, edição com cartão, edição sem cartão, um cartão, vários cartões com e sem padrão, e padrão excluído.
 
+### A8. Campo de parcelas preso no "1" (bug)
+
+**Sintoma:** ao editar uma compra no cartão, o campo **Parcelas** fica sempre com "1". Apagar não funciona, e digitar 3 vira "13".
+
+**Causa encontrada:** em `forms.jsx`, no formulário de lançamento, o campo está assim:
+```jsx
+<Input label="Parcelas" value={f.installments || '1'} onChange={v => set('installments', v.replace(/\D/g, ''))} ... />
+```
+- Quando o campo é apagado, `installments` fica `''`.
+- `'' || '1'` mostra "1" de novo, então o campo nunca fica vazio e cada dígito é acrescentado depois do 1.
+- Confira se ainda está assim na versão atual.
+
+**Correção:**
+- O campo mostra exatamente o que foi digitado (`value={f.installments ?? ''}`), com `placeholder="1"`.
+- O **1** só é assumido ao salvar, quando o campo estiver vazio. A validação já usa `parseInt(...) || 1`.
+- **Limite de 1 a 48.** Fora disso, mensagem clara.
+- **No celular:** botões **− e +** ao lado do número (área de toque de 44 px), mais atalhos rápidos **1x, 2x, 3x, 6x, 10x, 12x**.
+- Mostrar embaixo o valor de cada parcela ("3x de R$ 38,59"), com a mesma divisão de centavos da fatura.
+- Mudar as parcelas de uma compra já lançada recalcula as faturas dos meses seguintes, sem duplicar.
+- **Procure o mesmo padrão `valor || 'padrão'` em outros campos numéricos** (valor, dia de vencimento, dia de fechamento, limite, metas) e corrija onde ele impedir de apagar o campo.
+- **Testes:**
+  - apagar e digitar 3 resulta em 3;
+  - vazio ao salvar vira 1;
+  - 0 e 49 são recusados;
+  - editar uma compra de 1x para 3x muda as faturas dos 3 meses e a soma continua igual ao valor da compra.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
