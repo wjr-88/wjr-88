@@ -246,8 +246,12 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
 1. **Como os avisos da Carteira chegam (confirmado por mim):**
    - Tenho **duas automações** de notificação, as duas rodando o **mesmo atalho** "Pegar Valor BB": uma com o app **BB**, outra com o app **Carteira**. As duas mandam `origem: "notificacao"`.
    - O app tem que distinguir os dois **pelo formato do texto**, não pela origem.
-   - Hoje elas não duplicam porque o aviso da Carteira para em "Para completar". **Depois desta correção, os dois vão lançar**, então a regra do item 5 (mesma compra lança uma vez só) é obrigatória e precisa de teste.
-   - Se for útil, proponha que o atalho mande o nome do app que gerou o aviso. Só se der para fazer sem eu montar outro atalho; senão, fique pelo formato.
+   - **Não há duplicidade na prática:** pagamento por aproximação com o celular gera só o aviso da **Carteira**; compra com o cartão físico ou na internet gera só o do **BB**. Mantenha a regra de duplicidade apenas como proteção.
+   - **Suspeita principal: a loja não está chegando.** No aviso da Carteira, "Pão de Açúcar. Brasília, DF" provavelmente é o **subtítulo** da notificação, e o atalho só envia **Título** e **Corpo**. O app receberia só "Banco do Brasil" + "R$ 27,19", sem a loja.
+     - **Confirme** pelo texto bruto no Diagnóstico.
+     - Se for isso, **ajuste o atalho**: no modelo, acrescente o campo `subtitulo` (variável Entrada do Atalho → Notificação → **Subtítulo**, se o iOS oferecer) com mais um marcador `XSUBX` e mais uma ação Substituir. Documente no passo a passo do app, uma ação por tela.
+     - Se o iOS não oferecer o Subtítulo, diga isso e use o caminho abaixo.
+   - **Mesmo sem loja, não parar em "Para completar":** aviso com valor e título igual ao banco ou nome de um cartão cadastrado **lança** no crédito desse cartão, com a descrição "Apple Pay · Banco do Brasil" e uma marca discreta "sem loja — toque para nomear". Não bloqueia.
 2. **Novo formato reconhecido, "aviso da Carteira":**
    - Quando o **título** for o nome de um cartão ou banco cadastrado ("Banco do Brasil", ou o nome/apelido do cartão) e o corpo tiver `Loja. Cidade, UF` + `R$ valor`, é **compra aprovada no crédito**.
    - **Cartão:** o que casa com o título (banco ou nome). Senão, o único cartão ativo. Senão, o cartão padrão.
