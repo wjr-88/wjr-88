@@ -302,6 +302,28 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
   - no guia do atalho, trocar por um marcador próprio (`XIDX`) preenchido com a data com segundos mais um número aleatório.
 - Documente a mudança do atalho no passo a passo do app, uma ação por tela. O atalho atual continua funcionando enquanto eu não mexer.
 
+### A13. Filtro por forma de pagamento e conferência do saldo
+**Problema real:** o saldo da conta no app está diferente do banco, e eu não consigo descobrir qual Pix ou débito causou a diferença. Falta filtrar os lançamentos pela forma de pagamento.
+
+**1. Filtros em Lançamentos** (e no painel de Despesas e Receitas):
+- **Forma de pagamento:** botões em linha, de toque fácil, com seleção múltipla: **Todos · Pix · Débito · Cartão de crédito · Boleto · Dinheiro · Transferência**.
+- **Conta e cartão:** escolher uma conta (ex.: BB) ou um cartão (ex.: Visa 5720).
+- **Origem:** manual, notificação do BB, Carteira, Siri, print, importação. Ajuda a achar o que entrou pela automação.
+- **Tipo:** despesas, receitas ou ambos.
+- Os filtros combinam com o seletor de período (A3) e com a busca por texto.
+- Ao filtrar, o topo mostra a **contagem e o total**: "Pix · BB · outubro: 23 lançamentos · saíram R$ 4.310,00 · entraram R$ 3.000,00".
+- Lembrar os últimos filtros no aparelho e ter "Limpar filtros".
+- Cada linha mostra um ícone pequeno da forma de pagamento (Pix, débito, cartão).
+
+**2. "Conferir saldo" da conta** (em Patrimônio, tocando na conta, e com atalho em Lançamentos quando o filtro for uma conta):
+- **A conta, passo a passo:** "Saldo informado em 12/10 09:00: R$ 8.600,00 + entradas R$ X − saídas R$ Y = **saldo no app R$ Z**".
+- Campo **"Quanto o banco mostra agora?"**. Ao preencher, mostra a **diferença** e lista **só os movimentos que mexem nessa conta** depois da data do saldo informado, do mais recente para o mais antigo, com a forma de pagamento.
+- **Ajuda para achar a causa:**
+  - se algum lançamento tiver exatamente o valor da diferença, destacá-lo;
+  - mostrar lançamentos que **podem estar errados**: Pix ou débito sem conta definida, compra no crédito marcada como Pix, lançamento com data anterior ao saldo informado (que não conta), duplicados prováveis e fatura marcada como paga por outra conta.
+- Botão **"Ajustar saldo para o valor do banco"**, que grava o novo saldo informado com a data e hora de agora, como já existe. Não apaga nem altera lançamentos.
+- **Testes:** a conta do saldo bate com a soma dos movimentos filtrados; o destaque do valor igual à diferença; lançamentos antes da data do saldo não entram.
+
 ### Entrega da Etapa A (responda assim e pare)
 1. Resumo em até 10 linhas.
 2. O que mudou para mim, tela por tela.
