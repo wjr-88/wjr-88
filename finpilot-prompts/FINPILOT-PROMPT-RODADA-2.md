@@ -243,7 +243,11 @@ Compra no valor de R$ 385,58, realizada em PG *MAXLOG IMPORT às 14:10 do dia 19
 ```
 
 **O que fazer:**
-1. **Confirme no Diagnóstico** a origem e o texto bruto dos itens parados. Descubra **qual automação** está mandando os avisos da Carteira: a do BB com outro app no filtro, uma automação separada, ou o atalho antigo do Apple Pay (origem `applepay`). Documente isso na entrega.
+1. **Como os avisos da Carteira chegam (confirmado por mim):**
+   - Tenho **duas automações** de notificação, as duas rodando o **mesmo atalho** "Pegar Valor BB": uma com o app **BB**, outra com o app **Carteira**. As duas mandam `origem: "notificacao"`.
+   - O app tem que distinguir os dois **pelo formato do texto**, não pela origem.
+   - Hoje elas não duplicam porque o aviso da Carteira para em "Para completar". **Depois desta correção, os dois vão lançar**, então a regra do item 5 (mesma compra lança uma vez só) é obrigatória e precisa de teste.
+   - Se for útil, proponha que o atalho mande o nome do app que gerou o aviso. Só se der para fazer sem eu montar outro atalho; senão, fique pelo formato.
 2. **Novo formato reconhecido, "aviso da Carteira":**
    - Quando o **título** for o nome de um cartão ou banco cadastrado ("Banco do Brasil", ou o nome/apelido do cartão) e o corpo tiver `Loja. Cidade, UF` + `R$ valor`, é **compra aprovada no crédito**.
    - **Cartão:** o que casa com o título (banco ou nome). Senão, o único cartão ativo. Senão, o cartão padrão.
